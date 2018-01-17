@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <title>WebGL GLSL Template</title>
+  <style>
+    body {
+      margin: 0;
+      overflow: hidden;
+    }
+  </style>
+</head>
+<body>
+  <canvas id="canvas"></canvas>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/dat-gui/0.6.5/dat.gui.min.js"></script>
+  <script src="glsl.js"></script>
+  <script>
+
+    function addColorToGui(gui, props, name, func, scope) {
+      const controller = gui.addColor(props, name);
+      controller.onChange(func.bind(scope));
+    }
+
+    function addToGui(gui, props, name, func, scope, min, max, step) {
+      const controller = gui.add(props, name, min, max, step);
+      controller.onChange(func.bind(scope));
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+
+      const glsl = new GLSL({
+        canvasId: 'canvas',
+        fragmentShaderSource: `
+precision mediump float;
+
+uniform float uTime;
+uniform vec2 uResolution;
+uniform vec2 uMouse;
+uniform bool uMousePressed;
+
+uniform vec3 uColor1;
+uniform vec3 uColor2;
+uniform float uScale;
+
+void main() {
+    vec2 st = gl_FragCoord.xy / uResolution.y;
+    vec2 m = uMouse / uResolution.y;
+    float l = length(st - m);
+    float v = sin(l * uScale + uTime * 10.0 * (uMousePressed ? 1.0 : -1.0)) * 0.5 + 0.5;
+    vec3 c = mix(uColor1, uColor2, v);
+    gl_FragColor = vec4(c, 1.0);
+}
+        `,
+      });
+
+      const props = {
+        scale: 50.0,
+        color1: [0, 0, 0],
+        color2: [255, 255, 255],
+        animation: true
+      }
+
+      const gui = new dat.GUI();
+      addToGui(gui, props, 'scale', function(v) {
+        glsl.setUniform('uScale', '1f', v);
+      }, this, 1.0, 100.0);
+      addColorToGui(gui, props, 'color1', function(v) {
+        glsl.setUniform('uColor1', '3fv', [v[0] / 255.0, v[1] / 255.0, v[2] / 255.0]);
+      }, this);
+      addColorToGui(gui, props, 'color2', function(v) {
+        glsl.setUniform('uColor2', '3fv', [v[0] / 255.0, v[1] / 255.0, v[2] / 255.0]);
+      }, this);
+
+      var funcToStartOrStopAnimation = function(v) {
+        if (v && !glsl.isAnimating()) {
+          glsl.start();
+        } else if (!v && glsl.isAnimating()) {
+          glsl.stop();
+        }
+      };
+      addToGui(gui, props, 'animation', funcToStartOrStopAnimation, this);
+
+      glsl.setUniform('uScale', '1f', props.scale);
+      glsl.setUniform('uColor1', '3fv', [props.color1[0] / 255.0, props.color1[1] / 255.0, props.color1[2] / 255.0]);
+      glsl.setUniform('uColor1', '3fv', [props.color2[0] / 255.0, props.color2[1] / 255.0, props.color2[2] / 255.0]);
+
+
+      glsl.start();
+    });
+  </script>
+</body>
+</html>
